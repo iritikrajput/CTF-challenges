@@ -1,0 +1,334 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - SQL Injection CTF{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="dashboard-header">
+        <h1><i class="fas fa-tachometer-alt"></i> CTF Dashboard</h1>
+        <p>Track your progress and view statistics</p>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-flag"></i>
+            </div>
+            <div class="stat-content">
+                <h3 id="flags-captured">0</h3>
+                <p>Flags Captured</p>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-target"></i>
+            </div>
+            <div class="stat-content">
+                <h3 id="total-attempts">0</h3>
+                <p>Total Attempts</p>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-percentage"></i>
+            </div>
+            <div class="stat-content">
+                <h3 id="success-rate">0%</h3>
+                <p>Success Rate</p>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-clock"></i>
+            </div>
+            <div class="stat-content">
+                <h3 id="time-spent">0m</h3>
+                <p>Time Spent</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="progress-section">
+        <h2><i class="fas fa-chart-line"></i> Challenge Progress</h2>
+        <div class="progress-grid">
+            <div class="progress-card" data-level="1">
+                <div class="progress-header">
+                    <h3>Level 1: Authentication Bypass</h3>
+                    <span class="status" id="level1-status">Not Started</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="level1-progress"></div>
+                </div>
+                <div class="progress-details">
+                    <p>Attempts: <span id="level1-attempts">0</span></p>
+                    <p>Best Time: <span id="level1-time">N/A</span></p>
+                </div>
+                <button onclick="startLevel(1)" class="progress-btn">
+                    <i class="fas fa-play"></i> Start Level
+                </button>
+            </div>
+
+            <div class="progress-card" data-level="2">
+                <div class="progress-header">
+                    <h3>Level 2: Data Extraction</h3>
+                    <span class="status" id="level2-status">Not Started</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="level2-progress"></div>
+                </div>
+                <div class="progress-details">
+                    <p>Attempts: <span id="level2-attempts">0</span></p>
+                    <p>Best Time: <span id="level2-time">N/A</span></p>
+                </div>
+                <button onclick="startLevel(2)" class="progress-btn">
+                    <i class="fas fa-play"></i> Start Level
+                </button>
+            </div>
+
+            <div class="progress-card" data-level="3">
+                <div class="progress-header">
+                    <h3>Level 3: Blind Injection</h3>
+                    <span class="status" id="level3-status">Not Started</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="level3-progress"></div>
+                </div>
+                <div class="progress-details">
+                    <p>Attempts: <span id="level3-attempts">0</span></p>
+                    <p>Best Time: <span id="level3-time">N/A</span></p>
+                </div>
+                <button onclick="startLevel(3)" class="progress-btn">
+                    <i class="fas fa-play"></i> Start Level
+                </button>
+            </div>
+
+            <div class="progress-card" data-level="4">
+                <div class="progress-header">
+                    <h3>Level 4: Schema Discovery</h3>
+                    <span class="status" id="level4-status">Not Started</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="level4-progress"></div>
+                </div>
+                <div class="progress-details">
+                    <p>Attempts: <span id="level4-attempts">0</span></p>
+                    <p>Best Time: <span id="level4-time">N/A</span></p>
+                </div>
+                <button onclick="startLevel(4)" class="progress-btn">
+                    <i class="fas fa-play"></i> Start Level
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="recent-activity">
+        <h2><i class="fas fa-history"></i> Recent Activity</h2>
+        <div class="activity-list" id="activity-list">
+            <!-- Activity items will be loaded here -->
+        </div>
+    </div>
+
+    <div class="achievements">
+        <h2><i class="fas fa-trophy"></i> Achievements</h2>
+        <div class="achievements-grid">
+            <div class="achievement-card" id="first-flag">
+                <i class="fas fa-flag"></i>
+                <h4>First Flag</h4>
+                <p>Capture your first flag</p>
+            </div>
+            <div class="achievement-card" id="speed-demon">
+                <i class="fas fa-bolt"></i>
+                <h4>Speed Demon</h4>
+                <p>Complete a level in under 2 minutes</p>
+            </div>
+            <div class="achievement-card" id="persistent">
+                <i class="fas fa-hammer"></i>
+                <h4>Persistent</h4>
+                <p>Make 50 attempts</p>
+            </div>
+            <div class="achievement-card" id="master-hacker">
+                <i class="fas fa-crown"></i>
+                <h4>Master Hacker</h4>
+                <p>Complete all 4 levels</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let dashboardData = {
+    attempts: [],
+    completedLevels: new Set(),
+    startTime: Date.now()
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadDashboardData();
+    updateStatistics();
+    loadRecentActivity();
+    checkAchievements();
+    
+    // Update every 30 seconds
+    setInterval(() => {
+        updateStatistics();
+        loadRecentActivity();
+    }, 30000);
+});
+
+function loadDashboardData() {
+    // Load from localStorage
+    const attempts = JSON.parse(localStorage.getItem('ctf_attempts') || '[]');
+    const completed = JSON.parse(localStorage.getItem('ctf_completed') || '[]');
+    const startTime = localStorage.getItem('ctf_start_time') || Date.now();
+    
+    dashboardData.attempts = attempts;
+    dashboardData.completedLevels = new Set(completed);
+    dashboardData.startTime = parseInt(startTime);
+    
+    if (!localStorage.getItem('ctf_start_time')) {
+        localStorage.setItem('ctf_start_time', Date.now().toString());
+    }
+}
+
+function updateStatistics() {
+    const attempts = dashboardData.attempts;
+    const successfulAttempts = attempts.filter(a => a.success);
+    
+    // Update stat cards
+    document.getElementById('flags-captured').textContent = dashboardData.completedLevels.size;
+    document.getElementById('total-attempts').textContent = attempts.length;
+    
+    const successRate = attempts.length > 0 ? Math.round((successfulAttempts.length / attempts.length) * 100) : 0;
+    document.getElementById('success-rate').textContent = successRate + '%';
+    
+    const timeSpent = Math.round((Date.now() - dashboardData.startTime) / 1000 / 60);
+    document.getElementById('time-spent').textContent = timeSpent + 'm';
+    
+    // Update level progress
+    for (let level = 1; level <= 4; level++) {
+        updateLevelProgress(level);
+    }
+}
+
+function updateLevelProgress(level) {
+    const levelAttempts = dashboardData.attempts.filter(a => a.endpoint.includes(`level${level}`));
+    const levelCompleted = dashboardData.completedLevels.has(level);
+    
+    const statusEl = document.getElementById(`level${level}-status`);
+    const progressEl = document.getElementById(`level${level}-progress`);
+    const attemptsEl = document.getElementById(`level${level}-attempts`);
+    const timeEl = document.getElementById(`level${level}-time`);
+    
+    if (levelCompleted) {
+        statusEl.textContent = 'Completed';
+        statusEl.className = 'status completed';
+        progressEl.style.width = '100%';
+        progressEl.className = 'progress-fill completed';
+    } else if (levelAttempts.length > 0) {
+        statusEl.textContent = 'In Progress';
+        statusEl.className = 'status in-progress';
+        progressEl.style.width = '50%';
+        progressEl.className = 'progress-fill in-progress';
+    } else {
+        statusEl.textContent = 'Not Started';
+        statusEl.className = 'status not-started';
+        progressEl.style.width = '0%';
+        progressEl.className = 'progress-fill';
+    }
+    
+    attemptsEl.textContent = levelAttempts.length;
+    
+    const successfulAttempts = levelAttempts.filter(a => a.success);
+    if (successfulAttempts.length > 0) {
+        const firstSuccess = successfulAttempts[0];
+        const timeToSuccess = new Date(firstSuccess.timestamp).getTime() - dashboardData.startTime;
+        timeEl.textContent = Math.round(timeToSuccess / 1000 / 60) + 'm';
+    } else {
+        timeEl.textContent = 'N/A';
+    }
+}
+
+function loadRecentActivity() {
+    const activityList = document.getElementById('activity-list');
+    const recentAttempts = dashboardData.attempts.slice(-10).reverse();
+    
+    if (recentAttempts.length === 0) {
+        activityList.innerHTML = '<p class="no-activity">No recent activity</p>';
+        return;
+    }
+    
+    const activityHTML = recentAttempts.map(attempt => {
+        const time = new Date(attempt.timestamp).toLocaleTimeString();
+        const level = attempt.endpoint.match(/level(\d+)/)?.[1] || 'Unknown';
+        const status = attempt.success ? 'success' : 'failed';
+        const icon = attempt.success ? 'check-circle' : 'times-circle';
+        
+        return `
+            <div class="activity-item ${status}">
+                <div class="activity-icon">
+                    <i class="fas fa-${icon}"></i>
+                </div>
+                <div class="activity-content">
+                    <h4>Level ${level} Attempt</h4>
+                    <p>${attempt.success ? 'Successful' : 'Failed'} injection attempt</p>
+                    <span class="activity-time">${time}</span>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    activityList.innerHTML = activityHTML;
+}
+
+function checkAchievements() {
+    const achievements = {
+        'first-flag': dashboardData.completedLevels.size >= 1,
+        'speed-demon': checkSpeedDemon(),
+        'persistent': dashboardData.attempts.length >= 50,
+        'master-hacker': dashboardData.completedLevels.size >= 4
+    };
+    
+    Object.entries(achievements).forEach(([id, earned]) => {
+        const element = document.getElementById(id);
+        if (earned) {
+            element.classList.add('earned');
+        }
+    });
+}
+
+function checkSpeedDemon() {
+    for (let level = 1; level <= 4; level++) {
+        const levelAttempts = dashboardData.attempts.filter(a => 
+            a.endpoint.includes(`level${level}`) && a.success
+        );
+        
+        if (levelAttempts.length > 0) {
+            const firstSuccess = levelAttempts[0];
+            const timeToSuccess = new Date(firstSuccess.timestamp).getTime() - dashboardData.startTime;
+            if (timeToSuccess < 2 * 60 * 1000) { // 2 minutes
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+function startLevel(level) {
+    window.location.href = `/level${level}`;
+}
+
+// Listen for level completions
+window.addEventListener('storage', function(e) {
+    if (e.key === 'ctf_completed') {
+        loadDashboardData();
+        updateStatistics();
+        checkAchievements();
+    }
+});
+</script>
+{% endblock %}
