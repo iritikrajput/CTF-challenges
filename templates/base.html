@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}SQL Injection CTF Lab{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ctf-theme.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="ctf-navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <i class="fas fa-shield-alt"></i>
+                <span>SQL Injection CTF</span>
+            </div>
+            <div class="nav-links">
+                <a href="/" class="nav-link">Home</a>
+                <a href="/guide" class="nav-link">Guide</a>
+                <a href="/dashboard" class="nav-link">Dashboard</a>
+                <a href="/leaderboard" class="nav-link">Stats</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="ctf-footer">
+        <div class="footer-content">
+            <p>&copy; 2024 SQL Injection CTF Lab - Educational Use Only</p>
+            <div class="footer-links">
+                <a href="#" onclick="showHint()"><i class="fas fa-lightbulb"></i> Hint</a>
+                <a href="#" onclick="showSolution()"><i class="fas fa-key"></i> Solution</a>
+            </div>
+        </div>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/ctf-helper.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

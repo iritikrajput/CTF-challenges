@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+
+{% block title %}{{ challenge or "SQL Injection CTF Lab" }}{% endblock %}
+
+{% block content %}
+<div class="ctf-container">
+    <div class="ctf-header">
+        <h1><i class="fas fa-bug"></i> SQL Injection CTF Lab</h1>
+        <p class="ctf-subtitle">Master SQL injection through hands-on challenges</p>
+    </div>
+
+    {% if not level %}
+    <!-- Challenge Selection -->
+    <div class="challenge-grid">
+        <div class="challenge-card" data-level="1">
+            <div class="challenge-header">
+                <h3><i class="fas fa-lock-open"></i> Level 1: Authentication Bypass</h3>
+                <span class="difficulty easy">Easy</span>
+            </div>
+            <p>Learn to bypass login authentication using basic SQL injection</p>
+            <button onclick="loadChallenge(1)" class="challenge-btn">Start Challenge</button>
+        </div>
+
+        <div class="challenge-card" data-level="2">
+            <div class="challenge-header">
+                <h3><i class="fas fa-database"></i> Level 2: Data Extraction</h3>
+                <span class="difficulty medium">Medium</span>
+            </div>
+            <p>Extract sensitive data using UNION SELECT attacks</p>
+            <button onclick="loadChallenge(2)" class="challenge-btn">Start Challenge</button>
+        </div>
+
+        <div class="challenge-card" data-level="3">
+            <div class="challenge-header">
+                <h3><i class="fas fa-clock"></i> Level 3: Blind Injection</h3>
+                <span class="difficulty hard">Hard</span>
+            </div>
+            <p>Use time-based techniques to extract data blindly</p>
+            <button onclick="loadChallenge(3)" class="challenge-btn">Start Challenge</button>
+        </div>
+
+        <div class="challenge-card" data-level="4">
+            <div class="challenge-header">
+                <h3><i class="fas fa-search"></i> Level 4: Schema Discovery</h3>
+                <span class="difficulty expert">Expert</span>
+            </div>
+            <p>Discover hidden database tables and extract admin data</p>
+            <button onclick="loadChallenge(4)" class="challenge-btn">Start Challenge</button>
+        </div>
+    </div>
+
+    <div class="setup-section">
+        <button onclick="setupDatabase()" class="setup-btn">
+            <i class="fas fa-cog"></i> Initialize CTF Database
+        </button>
+    </div>
+
+    {% else %}
+    <!-- Individual Challenge Interface -->
+    <div class="challenge-container">
+        <div class="challenge-info">
+            <h2><i class="fas fa-target"></i> {{ challenge }}</h2>
+            <p class="challenge-hint"><i class="fas fa-lightbulb"></i> <strong>Hint:</strong> {{ hint }}</p>
+        </div>
+
+        <div class="challenge-form">
+            {% if level == 1 or level == 2 %}
+            <!-- Login Form for Level 1 & 2 -->
+            <form id="ctfForm" class="ctf-form">
+                <div class="form-group">
+                    <label for="username"><i class="fas fa-user"></i> Username:</label>
+                    <input type="text" id="username" name="username" placeholder="Enter username or payload" required>
+                </div>
+                <div class="form-group">
+                    <label for="password"><i class="fas fa-lock"></i> Password:</label>
+                    <input type="password" id="password" name="password" placeholder="Enter password">
+                </div>
+                <button type="submit" class="submit-btn">
+                    <i class="fas fa-rocket"></i> Execute Attack
+                </button>
+            </form>
+
+            {% elif level == 3 %}
+            <!-- Username only for Level 3 -->
+            <form id="ctfForm" class="ctf-form">
+                <div class="form-group">
+                    <label for="username"><i class="fas fa-user"></i> Username (Time-based injection):</label>
+                    <input type="text" id="username" name="username" placeholder="Try: admin' AND (SELECT CASE WHEN (1=1) THEN (SELECT COUNT(*) FROM sqlite_master) ELSE 0 END)--" required>
+                </div>
+                <button type="submit" class="submit-btn">
+                    <i class="fas fa-stopwatch"></i> Execute Time Attack
+                </button>
+            </form>
+
+            {% elif level == 4 %}
+            <!-- Search form for Level 4 -->
+            <form id="ctfForm" class="ctf-form">
+                <div class="form-group">
+                    <label for="search"><i class="fas fa-search"></i> Search Users:</label>
+                    <input type="text" id="search" name="search" placeholder="Try: ' UNION SELECT name,sql FROM sqlite_master--" required>
+                </div>
+                <button type="submit" class="submit-btn">
+                    <i class="fas fa-search-plus"></i> Search & Discover
+                </button>
+            </form>
+            {% endif %}
+        </div>
+
+        <div id="result" class="result-container" style="display: none;">
+            <!-- Results will be displayed here -->
+        </div>
+
+        <div class="challenge-actions">
+            <button onclick="showExample({{ level }})" class="action-btn example-btn">
+                <i class="fas fa-code"></i> Show Example
+            </button>
+            <button onclick="showHint({{ level }})" class="action-btn hint-btn">
+                <i class="fas fa-question-circle"></i> Get Hint
+            </button>
+            <button onclick="location.href='/'" class="action-btn back-btn">
+                <i class="fas fa-arrow-left"></i> Back to Challenges
+            </button>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<div id="modal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <div id="modal-body"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const currentLevel = {{ level or 'null' }};
+
+document.getElementById('ctfForm')?.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData.entries());
+    
+    const endpoint = `/level${currentLevel}`;
+    
+    try {
+        showLoading();
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        displayResult(result);
+        
+    } catch (error) {
+        displayError('Network error: ' + error.message);
+    }
+});
+</script>
+{% endblock %}
